@@ -4,16 +4,15 @@ const request = window.indexedDB.open("MusicDB", 1);
 
 request.onupgradeneeded = function(event) {
     db = event.target.result;
-    db.createObjectStore("songs", 
-        {
-            keyPath: "id", 
-            autoIncrement: true
-        }
-    );
+    db.createObjectStore("songs", { keyPath: "id", autoIncrement: true });
     console.log("Succesfully Creating Table");
 }
 
-function storeMusic(songObject) {
+function storeMusic(songObject, callbackSuccess) {
+    if (!db) {
+        console.error("Database belum siap!");
+        return;
+    }
     const transaction = db.transaction(["songs"], "readwrite");
     const store = transaction.objectStore("songs");
 
@@ -21,6 +20,8 @@ function storeMusic(songObject) {
 
     requestAdd.onsuccess = function() {
         console.log("Song added");
+        // JALANKAN callback-nya di sini jika ada
+        if (callbackSuccess) callbackSuccess();
     }
 
     requestAdd.onerror = function(event) {
@@ -28,7 +29,17 @@ function storeMusic(songObject) {
     }
 }
 
-  function getAllSongs(callback) {
+request.onerror = function(event) {
+    console.error("Failed to open Database", event.target.error);
+}
+
+request.onsuccess = function(event) {
+    db = event.target.result;
+    console.log("Database MusicDB opened");
+}
+
+function getAllSongs(callback) {
+    if (!db) return;
     const transaction = db.transaction(["songs"], "readonly");
     const store = transaction.objectStore("songs");
 
@@ -40,13 +51,4 @@ function storeMusic(songObject) {
     requestGetAll.onerror = function(event) {
         console.error("error fetching data", event.target.error);
     }
-  }
-
-request.onerror = function(event) {
-    console.error("Failed to open Database", event.target.error);
-}
-
-request.onsuccess = function(event) {
-    db = event.target.result
-    console.log("Database MusicDB opened")
 }
