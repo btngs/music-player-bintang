@@ -11,66 +11,43 @@
   const previousTrack = document.querySelector('.play-back');
   const repeatTrack = document.querySelector('.repeat');
   const volumeSlider = document.querySelector('.volume-controls');
+  const search = document.getElementById('search-bar');
+
   let currentTrackIndex = 0;
   let isShuffleEnabled = false;
 
-  const musicList = [
-    {
-      title: "Cause You Have To",
-      artist: "LANY",
-      path: "musics/LANY - 'Cause You Have To.mp3",
-      duration: "4:10",
-    },
-    {
-      title: "anything 4 u",
-      artist: "LANY",
-      path: "musics/LANY - anything 4 u.mp3",
-      duration: "3:14",
-    },
-    {
-      title: "Always",
-      artist: "Rex Orange County",
-      path: "musics/Rex Orange County - Always.mp3",
-      duration: "3:17",
-    },
-    {
-      title: "Best Friend",
-      artist: "Rex Orange County",
-      path: "musics/Rex Orange County - Best Friend.mp3",
-      duration: "4:22",
-    },
-    {
-      title: "Happiness",
-      artist: "Rex Orange County",
-      path: "musics/Rex Orange County - Happiness.mp3",
-      duration: "4:39",
-    },
-    {
-      title: "About You",
-      artist: "The 1975",
-      path: "musics/The 1975 - About You.mp3",
-      duration: "5:26",
-    },
-    {
-      title: "It's Not Living",
-      artist: "The 1975",
-      path: "musics/The 1975 - It's Not Living.mp3",
-      duration: "4:08",
-    },
-    {
-      title: "Robbers",
-      artist: "The 1975",
-      path: "musics/The 1975 - Robbers.mp3",
-      duration: "4:14",
-    },
-  ];
+  let defaultMusic = [];
+  let musicList = [];
 
   const audioPlayer = new Audio();
 
-  function musiclistShow() {
+  function resolveMusicSource(music) {
+    if (music.path) return music.path;
+    if (music.fileData) return URL.createObjectURL(music.fileData);
+    return "";
+  }
+
+  function normalizeMusic(music) {
+    return {
+      ...music,
+      path: resolveMusicSource(music),
+      duration: music.duration && music.duration !== "" ? music.duration : "0:00",
+    };
+  }
+
+  function formatDuration(seconds) {
+    if(isNaN(seconds) || seconds === Infinity) return "0:00";
+      const minutes = Math.floor(seconds / 60);
+      const remainingSeconds = Math.floor(seconds % 60);
+      const formattedSeconds = remainingSeconds < 10 ? '0' + remainingSeconds : remainingSeconds;
+      return `${minutes}:${formattedSeconds}`;
+  }
+
+  function musiclistShow(songsToRender = musicList) {
     musicContainer.innerHTML = ""; 
 
-    musicList.forEach(function(music, index){
+    songsToRender.forEach(function(rawMusic, index){
+      const music = normalizeMusic(rawMusic);
       const article = document.createElement("article");
       article.className = "music-card"
 
@@ -91,7 +68,8 @@
       `;
 
       const musicPlay = article.querySelector('.btn-play');
-      musicPlay.addEventListener('click', createMusicPlayHandler(music, index));
+      const originalIndex = musicList.findIndex(track => track.title === music.title);
+      musicPlay.addEventListener('click', createMusicPlayHandler(music, originalIndex));
 
       musicContainer.appendChild(article);
     });
@@ -106,6 +84,7 @@
   audioPlayer.addEventListener('ended', playNextTrack);
   volumeSlider.addEventListener('input', volumeControl);
   mp3Upload.addEventListener('change', uploadMusic);
+  search.addEventListener('input', searchMusic);
 
 
   if (playAlbum) playAlbum.addEventListener('click', onPlayAlbumClick);
@@ -120,25 +99,50 @@
           alert("Please Upload an .mp3 files");
           return;
         }
-        const songObject = {
-          title: file.name,
-          artist: "Unknown Artist",
-          fileData: file,
-          duration: ""
-        }
-        storeMusic(songObject, function(){
-          musiclistShow();  
-          getAllSongs(function(songsFromDB){
-            songsFromDB.forEach(function(song){
-              const isExist = musicList.some(track => track.id === song.id)
-              if (!isExist) {
+
+        const tempAudio = new Audio;
+        tempAudio.src = URL.createObjectURL(file);
+        tempAudio.addEventListener('loadedmetadata', function() {
+          const durationText = formatDuration(tempAudio.duration);
+          console.log(durationText);
+          const title = file.name.replace(/\.[^/.]+$/, "");
+          const songObject = {
+            title: title,
+            artist: "Unknown Artist",
+            fileData: file,
+            duration: durationText,
+          }
+
+          URL.revokeObjectURL(tempAudio.src);
+
+          storeMusic(songObject, function(){
+            getAllSongs(function(songsFromDB){
+              musicList = [...defaultMusic];
+              songsFromDB.forEach(function(song){
                 musicList.push(song);
-              }
+              });
               musiclistShow(); 
-            })
-          });
-        });   
+            });
+          });   
+        });
+      event.target.value = "";
     }
+  }
+
+  function searchMusic(event) {
+    const searchTerm = event.target.value.toLowerCase();
+
+    if (searchTerm === "") {
+      musiclistShow();
+      return;
+    } 
+
+    const filteredMusic = musicList.filter(function(music){
+      const titleMatch = music.title.toLowerCase().includes(searchTerm);
+      const artistMatch = music.artist.toLowerCase().includes(searchTerm);
+      return titleMatch || artistMatch;
+    });
+    musiclistShow(filteredMusic);
   }
 
   function createMusicPlayHandler(music, index) {
@@ -192,13 +196,14 @@
   }
 
   function playTrack(music, index = -1) {
+    const resolvedMusic = normalizeMusic(music);
     if (typeof index === 'number' && index >= 0) {
       currentTrackIndex = index;
     }
-    audioPlayer.src = music.path;
+    audioPlayer.src = resolvedMusic.path;
     audioPlayer.play();
     syncPlayIcons();
-    updateTrackInfo(music);
+    updateTrackInfo(resolvedMusic);
   }
 
   function playRandomTrack() {
@@ -276,7 +281,23 @@
     updateAlbumPlayIcon();
   }
 
-
-
-  musiclistShow();
-
+  fetch('musics.json')
+    .then(response => response.json())
+    .then(data => {
+      defaultMusic = data;
+      return window.dbReady;
+    })
+    .then(() => {
+      getAllSongs(function(songsFromDB){
+        musicList = [...defaultMusic];
+        if (songsFromDB && songsFromDB.length > 0) {
+          songsFromDB.forEach(function(song){
+            musicList.push(song);
+          })
+        }
+        musiclistShow();
+      })
+    })
+    .catch(error => {
+      console.error("Failed", error)
+    });

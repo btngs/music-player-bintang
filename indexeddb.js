@@ -1,10 +1,16 @@
 let db;
+let dbReadyResolve;
+const dbReady = new Promise((resolve) => {
+    dbReadyResolve = resolve;
+});
 
 const request = window.indexedDB.open("MusicDB", 1);
 
 request.onupgradeneeded = function(event) {
     db = event.target.result;
-    db.createObjectStore("songs", { keyPath: "id", autoIncrement: true });
+    if (!db.objectStoreNames.contains("songs")) {
+        db.createObjectStore("songs", { keyPath: "id", autoIncrement: true });
+    }
     console.log("Succesfully Creating Table");
 }
 
@@ -20,7 +26,6 @@ function storeMusic(songObject, callbackSuccess) {
 
     requestAdd.onsuccess = function() {
         console.log("Song added");
-        // JALANKAN callback-nya di sini jika ada
         if (callbackSuccess) callbackSuccess();
     }
 
@@ -36,6 +41,7 @@ request.onerror = function(event) {
 request.onsuccess = function(event) {
     db = event.target.result;
     console.log("Database MusicDB opened");
+    if (dbReadyResolve) dbReadyResolve();
 }
 
 function getAllSongs(callback) {
@@ -52,3 +58,5 @@ function getAllSongs(callback) {
         console.error("error fetching data", event.target.error);
     }
 }
+
+window.dbReady = dbReady;

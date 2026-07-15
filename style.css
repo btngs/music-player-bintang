@@ -362,12 +362,16 @@ body {
 .track-info {
   display: flex;
   flex-direction: column;
+  max-width: 220px;
 }
 
 .track-title {
   font-size: 0.9rem;
   font-weight: 600;
   color: var(--text-main);
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
 .track-artist {
