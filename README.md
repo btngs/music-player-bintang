@@ -27,6 +27,7 @@ This app uses two kinds of music sources:
 Uploaded files are stored in IndexedDB so they can be loaded again after refreshed.
 
 ## Running The Project
-
 Recommended options:
-1. 
+1. Using [this](https://btngs-mplayer.netlify.app/)
+2. Install the .zip file and extract it to your computer, then run the `index.html` directly to your browser.
+
