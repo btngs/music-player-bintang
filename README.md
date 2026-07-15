@@ -12,11 +12,11 @@ Progress Tracking: Real-time playback progress
 
 ## Project Structures
 ---------------------------------------------------------------------------
-`index.html` - main page markup
-`style.css` - application styling
-`script.js` - player logic, rendering, and playback control
-`indexeddb.js` - IndexedDB helpers for saving and reading songs
-`musics/` - bundled sample audio files
+-`index.html` - main page markup
+-`style.css` - application styling
+-`script.js` - player logic, rendering, and playback control
+-`indexeddb.js` - IndexedDB helpers for saving and reading songs
+-`musics/` - bundled sample audio files
 
 ## How It Works
 -------------------------------------------------------
