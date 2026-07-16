@@ -31,3 +31,5 @@ Recommended options:
 1. Using [this](https://btngs-mplayer.netlify.app/) link to open the app
 2. Install the .zip file and extract it to your computer, then run the `index.html` directly to your browser or using local server like laragon or xampp.
 
+
+
